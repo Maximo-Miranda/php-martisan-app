@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import type { Project } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Calendar, Shield, Users } from 'lucide-vue-next';
+import { Calendar, Shield } from 'lucide-vue-next';
 
 const props = defineProps<{
     invitation: {

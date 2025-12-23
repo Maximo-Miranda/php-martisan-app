@@ -21,7 +21,7 @@ interface PaginatedProjects {
     total: number;
 }
 
-const props = defineProps<{
+defineProps<{
     projects: PaginatedProjects;
 }>();
 
