@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/home/mhmh/.local/share/mise/installs/php/8.4.16/bin/php",
+            "args": [
+                "/home/mhmh/code/wudok/php-martina-app/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}

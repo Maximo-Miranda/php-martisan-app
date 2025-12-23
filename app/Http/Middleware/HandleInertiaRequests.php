@@ -38,14 +38,30 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $user = $request->user();
+
+        // Get all accessible projects (from pivot table), ordered with owned projects first
+        $allProjects = $user ? $user->projects()
+            ->select('projects.id', 'projects.name', 'projects.slug', 'projects.owner_id')
+            ->orderByRaw('CASE WHEN projects.owner_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->latest('projects.created_at')
+            ->get() : [];
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'projects' => $allProjects,
+            'currentProject' => $user?->currentProject,
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+                'info' => $request->session()->get('info'),
+            ],
         ];
     }
 }

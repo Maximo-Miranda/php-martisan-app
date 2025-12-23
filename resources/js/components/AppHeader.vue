@@ -2,6 +2,7 @@
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
+import ProjectSwitcher from '@/components/ProjectSwitcher.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -151,6 +152,11 @@ const rightNavItems: NavItem[] = [
                 <Link :href="dashboard()" class="flex items-center gap-x-2">
                     <AppLogo />
                 </Link>
+
+                <!-- Project Switcher -->
+                <div v-if="auth.user" class="ml-4">
+                    <ProjectSwitcher />
+                </div>
 
                 <!-- Desktop Menu -->
                 <div class="hidden h-full lg:flex lg:flex-1">
