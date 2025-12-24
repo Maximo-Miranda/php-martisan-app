@@ -36,9 +36,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import type { BreadcrumbItem, Project, ProjectInvitation, ProjectMember, User } from '@/types';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { Crown, Mail, Trash2, UserPlus, Users } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 const props = defineProps<{
     project: Project & {
@@ -46,10 +46,9 @@ const props = defineProps<{
         invitations: ProjectInvitation[];
     };
     members: ProjectMember[];
+    canInvite: boolean;
 }>();
 
-const page = usePage();
-const auth = computed(() => page.props.auth as { user: User });
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -69,7 +68,6 @@ const inviteForm = useForm({
     role: 'Project Viewer',
 });
 
-const isOwner = computed(() => auth.value.user.id === props.project.owner_id);
 
 function sendInvitation() {
     inviteForm.post(`/projects/${props.project.id}/invitations`, {
@@ -140,7 +138,7 @@ function getRoleBadgeVariant(role: string): 'default' | 'secondary' | 'outline' 
                             </div>
                             <Dialog v-model:open="inviteDialogOpen">
                                 <DialogTrigger as-child>
-                                    <Button v-if="isOwner" size="sm">
+                                    <Button v-if="canInvite" size="sm">
                                         <UserPlus class="mr-2 h-4 w-4" />
                                         Invite
                                     </Button>
@@ -247,7 +245,7 @@ function getRoleBadgeVariant(role: string): 'default' | 'secondary' | 'outline' 
                 </Card>
 
                 <!-- Pending Invitations Section -->
-                <div v-if="isOwner && project.invitations.length > 0" class="space-y-4">
+                <div v-if="canInvite && project.invitations.length > 0" class="space-y-4">
                     <div>
                         <h3 class="flex items-center gap-2 text-lg font-semibold">
                             <Mail class="h-5 w-5" />

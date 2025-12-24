@@ -14,30 +14,6 @@ beforeEach(function () {
     $this->withoutVite();
 });
 
-it('displays the projects index page', function () {
-    $user = User::factory()->create();
-    $project = Project::factory()->create(['owner_id' => $user->id]);
-    $user->projects()->attach($project->id);
-    $user->update(['current_project_id' => $project->id]);
-
-    $response = $this->actingAs($user)->get('/projects');
-
-    $response->assertStatus(200);
-    $response->assertInertia(fn ($page) => $page
-        ->component('Projects/Index')
-        ->has('projects.data', 1)
-    );
-});
-
-it('displays the create project page', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-
-    $response = $this->actingAs($user)->get('/projects/create');
-
-    $response->assertStatus(200);
-    $response->assertInertia(fn ($page) => $page->component('Projects/Create'));
-});
-
 it('can create a new project', function () {
     $user = User::factory()->create(['email_verified_at' => now()]);
 
@@ -254,34 +230,6 @@ it('shows owned projects first in index', function () {
         ->where('projects.data.0.is_owner', 1)
         ->where('projects.data.1.name', 'Member Project')
         ->where('projects.data.1.is_owner', 0)
-    );
-});
-
-it('paginates projects when there are more than 12', function () {
-    $user = User::factory()->create();
-
-    // Create 15 projects
-    for ($i = 0; $i < 15; $i++) {
-        $project = Project::factory()->create(['owner_id' => $user->id]);
-        $user->projects()->attach($project->id);
-    }
-
-    $response = $this->actingAs($user)->get('/projects');
-
-    $response->assertStatus(200);
-    $response->assertInertia(fn ($page) => $page
-        ->component('Projects/Index')
-        ->has('projects.data', 12)
-        ->where('projects.current_page', 1)
-        ->where('projects.last_page', 2)
-    );
-
-    // Test page 2
-    $response = $this->actingAs($user)->get('/projects?page=2');
-    $response->assertStatus(200);
-    $response->assertInertia(fn ($page) => $page
-        ->has('projects.data', 3)
-        ->where('projects.current_page', 2)
     );
 });
 

@@ -249,3 +249,85 @@ it('can access project immediately after accepting invitation', function () {
     );
 });
 
+it('super admin can send invitation to any project', function () {
+    Notification::fake();
+
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignGlobalRole('Super Admin');
+
+    $owner = User::factory()->create();
+    $project = Project::factory()->create(['owner_id' => $owner->id]);
+    $owner->projects()->attach($project->id);
+    $this->roleService->createRolesForProject($project);
+
+    // Super Admin is NOT a member of this project
+    expect($superAdmin->belongsToProject($project))->toBeFalse();
+
+    $response = $this->actingAs($superAdmin)->post("/projects/{$project->id}/invitations", [
+        'email' => 'newuser@example.com',
+        'role' => 'Project Editor',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success', 'Invitation sent successfully.');
+
+    $this->assertDatabaseHas('project_invitations', [
+        'project_id' => $project->id,
+        'email' => 'newuser@example.com',
+        'role' => 'Project Editor',
+        'invited_by' => $superAdmin->id,
+    ]);
+
+    Notification::assertSentOnDemand(ProjectInvitationNotification::class);
+});
+
+it('super admin can cancel invitation for any project', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignGlobalRole('Super Admin');
+
+    $owner = User::factory()->create();
+    $project = Project::factory()->create(['owner_id' => $owner->id]);
+    $owner->projects()->attach($project->id);
+    $this->roleService->createRolesForProject($project);
+
+    $invitation = ProjectInvitation::factory()->create([
+        'project_id' => $project->id,
+        'invited_by' => $owner->id,
+    ]);
+
+    $response = $this->actingAs($superAdmin)->delete("/projects/{$project->id}/invitations/{$invitation->id}");
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success', 'Invitation cancelled successfully.');
+    $this->assertDatabaseMissing('project_invitations', ['id' => $invitation->id]);
+});
+
+it('super admin can resend invitation for any project', function () {
+    Notification::fake();
+
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignGlobalRole('Super Admin');
+
+    $owner = User::factory()->create();
+    $project = Project::factory()->create(['owner_id' => $owner->id]);
+    $owner->projects()->attach($project->id);
+    $this->roleService->createRolesForProject($project);
+
+    $invitation = ProjectInvitation::factory()->create([
+        'project_id' => $project->id,
+        'invited_by' => $owner->id,
+        'email' => 'invited@example.com',
+    ]);
+
+    $oldToken = $invitation->token;
+
+    $response = $this->actingAs($superAdmin)->post("/projects/{$project->id}/invitations/{$invitation->id}/resend");
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success', 'Invitation resent successfully.');
+
+    $invitation->refresh();
+    expect($invitation->token)->not->toBe($oldToken);
+
+    Notification::assertSentOnDemand(ProjectInvitationNotification::class);
+});

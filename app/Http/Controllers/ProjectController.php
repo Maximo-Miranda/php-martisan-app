@@ -124,6 +124,7 @@ class ProjectController extends Controller
         return Inertia::render('Projects/Show', [
             'project' => $project,
             'members' => $membersWithRoles,
+            'canInvite' => auth()->user()->can('invite', $project),
         ]);
     }
 
@@ -176,7 +177,6 @@ class ProjectController extends Controller
             'current_project_id' => $request->project_id,
         ]);
 
-        // Update tenant context for permissions
         setPermissionsTeamId($request->project_id);
 
         return back()->with('success', 'Project switched successfully.');
