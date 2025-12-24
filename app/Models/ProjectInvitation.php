@@ -2,11 +2,9 @@
 
 namespace App\Models;
 
-use Database\Factories\ProjectInvitationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,10 +13,10 @@ use Illuminate\Support\Carbon;
  * @property string $email
  * @property string $role
  * @property string $token
- * @property Carbon $expires_at
- * @property Carbon|null $accepted_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon $expires_at
+ * @property \Illuminate\Support\Carbon|null $accepted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\User $inviter
  * @property-read \App\Models\Project $project
  * @method static \Database\Factories\ProjectInvitationFactory factory($count = null, $state = [])
@@ -36,11 +34,10 @@ use Illuminate\Support\Carbon;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProjectInvitation whereToken($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|ProjectInvitation whereUpdatedAt($value)
  * @mixin \Eloquent
- * @noinspection PhpUnnecessaryFullyQualifiedNameInspection
  */
 class ProjectInvitation extends Model
 {
-    /** @use HasFactory<ProjectInvitationFactory> */
+    /** @use HasFactory<\Database\Factories\ProjectInvitationFactory> */
     use HasFactory;
 
     /**

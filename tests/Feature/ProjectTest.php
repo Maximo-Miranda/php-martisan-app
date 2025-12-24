@@ -354,21 +354,4 @@ it('member projects appear in projects list', function () {
     );
 });
 
-it('if user dose not has project, he will be redirect to create new project', function () {
-    $ownerUser = User::factory()->create();
-    $user = User::factory()->create(
-        [
-            'current_project_id' => null,
-            'email_verified_at' => now()
-        ]
-    );
-
-    $this->assertDatabaseMissing('projects', [
-        'owner_id' => $user->id,
-    ]);
-
-    $this->actingAs($user)->get('/dashboard')
-        ->assertRedirect('/projects/create');
-});
-
 

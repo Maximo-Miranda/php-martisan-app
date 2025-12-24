@@ -59,13 +59,10 @@ use Spatie\Permission\Traits\HasRoles;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutPermission($permissions)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutRole($roles, $guard = null)
  * @mixin \Eloquent
- * @noinspection PhpFullyQualifiedNameUsageInspection
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory>
-     * @noinspection PhpFullyQualifiedNameUsageInspection
-     */
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
 
     /**
@@ -78,7 +75,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'current_project_id',
-        'email_verified_at',
     ];
 
     /**
