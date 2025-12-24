@@ -22,8 +22,32 @@ class ProjectController extends Controller
     {
         $user = auth()->user();
 
-        // Get all projects where user is a member (owned or not)
-        $projects = $user->projects()
+        // Super Admin sees all projects in the platform
+        if ($user->isSuperAdmin()) {
+            $projects = Project::query()
+                ->with('owner:id,name')
+                ->withCount('members')
+                ->selectRaw('projects.*, CASE WHEN projects.owner_id = ? THEN 1 ELSE 0 END as is_owner', [$user->id])
+                ->latest('projects.created_at')
+                ->paginate(12);
+
+            return Inertia::render('Projects/Index', [
+                'projects' => $projects,
+                'isSuperAdmin' => true,
+            ]);
+        }
+
+        // Regular users see only their projects (owned or member)
+        $projects = Project::query()
+            ->where(function ($query) use ($user) {
+                $query->where('projects.owner_id', $user->id)
+                    ->orWhereExists(function ($subquery) use ($user) {
+                        $subquery->select(\DB::raw(1))
+                            ->from('project_user')
+                            ->whereColumn('project_user.project_id', 'projects.id')
+                            ->where('project_user.user_id', $user->id);
+                    });
+            })
             ->with('owner:id,name')
             ->withCount('members')
             ->selectRaw('projects.*, CASE WHEN projects.owner_id = ? THEN 1 ELSE 0 END as is_owner', [$user->id])
@@ -33,6 +57,7 @@ class ProjectController extends Controller
 
         return Inertia::render('Projects/Index', [
             'projects' => $projects,
+            'isSuperAdmin' => false,
         ]);
     }
 
@@ -80,8 +105,25 @@ class ProjectController extends Controller
                 ->where('expires_at', '>', now()),
         ]);
 
+        // Get roles for each member in this project context
+        setPermissionsTeamId($project->id);
+        $membersWithRoles = $project->members->map(function ($member) use ($project) {
+            $role = $member->roles()
+                ->where('roles.project_id', $project->id)
+                ->first();
+
+            return [
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
+                'role' => $role?->name ?? 'Member',
+                'is_owner' => $member->id === $project->owner_id,
+            ];
+        });
+
         return Inertia::render('Projects/Show', [
             'project' => $project,
+            'members' => $membersWithRoles,
         ]);
     }
 

@@ -35,17 +35,17 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import type { BreadcrumbItem, Project, ProjectInvitation, User } from '@/types';
+import type { BreadcrumbItem, Project, ProjectInvitation, ProjectMember, User } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { Mail, Trash2, UserPlus, Users } from 'lucide-vue-next';
+import { Crown, Mail, Trash2, UserPlus, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
     project: Project & {
         owner: User;
-        members: User[];
         invitations: ProjectInvitation[];
     };
+    members: ProjectMember[];
 }>();
 
 const page = usePage();
@@ -94,6 +94,19 @@ function resendInvitation(invitation: ProjectInvitation) {
         preserveScroll: true,
     });
 }
+
+function formatRoleName(role: string): string {
+    return role.replace('Project ', '');
+}
+
+function getRoleBadgeVariant(role: string): 'default' | 'secondary' | 'outline' | 'destructive' {
+    const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
+        'Project Admin': 'default',
+        'Project Editor': 'secondary',
+        'Project Viewer': 'outline',
+    };
+    return variants[role] ?? 'secondary';
+}
 </script>
 
 <template>
@@ -122,7 +135,7 @@ function resendInvitation(invitation: ProjectInvitation) {
                                     Members
                                 </CardTitle>
                                 <CardDescription>
-                                    {{ project.members.length }} team members
+                                    {{ members.length }} team member{{ members.length === 1 ? '' : 's' }}
                                 </CardDescription>
                             </div>
                             <Dialog v-model:open="inviteDialogOpen">
@@ -193,26 +206,39 @@ function resendInvitation(invitation: ProjectInvitation) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead class="pl-6">Member</TableHead>
-                                    <TableHead class="pr-6">Role</TableHead>
+                                    <TableHead class="pr-6 text-right">Role</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                <TableRow v-for="member in project.members" :key="member.id">
+                                <TableRow v-for="member in members" :key="member.id">
                                     <TableCell class="pl-6 py-4">
-                                        <div>
-                                            <p class="font-medium text-base">{{ member.name }}</p>
-                                            <p class="text-sm text-muted-foreground">
-                                                {{ member.email }}
-                                            </p>
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                                                {{ member.name.charAt(0).toUpperCase() }}
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="font-medium text-base">{{ member.name }}</p>
+                                                    <Crown v-if="member.is_owner" class="h-4 w-4 text-amber-500" title="Project Owner" />
+                                                </div>
+                                                <p class="text-sm text-muted-foreground">
+                                                    {{ member.email }}
+                                                </p>
+                                            </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell class="pr-6 py-4">
-                                        <Badge v-if="member.id === project.owner_id" variant="default">
+                                    <TableCell class="pr-6 py-4 text-right">
+                                        <Badge v-if="member.is_owner" variant="default" class="bg-amber-500 hover:bg-amber-600">
                                             Owner
                                         </Badge>
-                                        <Badge v-else variant="secondary">
-                                            Member
+                                        <Badge v-else :variant="getRoleBadgeVariant(member.role)">
+                                            {{ formatRoleName(member.role) }}
                                         </Badge>
+                                    </TableCell>
+                                </TableRow>
+                                <TableRow v-if="members.length === 0">
+                                    <TableCell colspan="2" class="h-24 text-center text-muted-foreground">
+                                        No members yet. Invite someone to get started.
                                     </TableCell>
                                 </TableRow>
                             </TableBody>

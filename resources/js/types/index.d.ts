@@ -65,4 +65,12 @@ export interface ProjectInvitation {
     project?: Project;
 }
 
+export interface ProjectMember {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    is_owner: boolean;
+}
+
 export type BreadcrumbItemType = BreadcrumbItem;

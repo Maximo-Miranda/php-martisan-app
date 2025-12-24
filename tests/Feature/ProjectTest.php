@@ -354,4 +354,91 @@ it('member projects appear in projects list', function () {
     );
 });
 
+it('super admin can see all projects in the platform', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignGlobalRole('Super Admin');
 
+    $user1 = User::factory()->create();
+    $user2 = User::factory()->create();
+
+    // Create projects for different users
+    $project1 = Project::factory()->create(['owner_id' => $user1->id]);
+    $project2 = Project::factory()->create(['owner_id' => $user2->id]);
+    $project3 = Project::factory()->create(['owner_id' => $user2->id]);
+
+    $user1->projects()->attach($project1->id);
+    $user2->projects()->attach([$project2->id, $project3->id]);
+
+    $response = $this->actingAs($superAdmin)->get('/projects');
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('Projects/Index')
+        ->has('projects.data', 3)
+        ->where('isSuperAdmin', true)
+    );
+});
+
+it('super admin can switch to any project without being a member', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignGlobalRole('Super Admin');
+
+    $otherUser = User::factory()->create();
+    $project = Project::factory()->create(['owner_id' => $otherUser->id]);
+    $otherUser->projects()->attach($project->id);
+
+    // Super Admin is NOT a member of this project
+    $this->assertFalse($superAdmin->belongsToProject($project));
+
+    $response = $this->actingAs($superAdmin)->post('/projects/switch', [
+        'project_id' => $project->id,
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success', 'Project switched successfully.');
+    $this->assertEquals($project->id, $superAdmin->fresh()->current_project_id);
+});
+
+it('super admin can view any project without being a member', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignGlobalRole('Super Admin');
+
+    $otherUser = User::factory()->create();
+    $project = Project::factory()->create(['owner_id' => $otherUser->id]);
+    $otherUser->projects()->attach($project->id);
+    $this->roleService->createRolesForProject($project);
+    setPermissionsTeamId($project->id);
+    $otherUser->assignRole('Project Owner');
+
+    $response = $this->actingAs($superAdmin)->get("/projects/{$project->id}");
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('Projects/Show')
+        ->has('project')
+        ->has('members')
+    );
+});
+
+it('regular user cannot see projects they do not belong to in index', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    // User's own project
+    $ownProject = Project::factory()->create(['owner_id' => $user->id]);
+    $user->projects()->attach($ownProject->id);
+
+    // Other user's project (user is NOT a member)
+    $otherProject = Project::factory()->create(['owner_id' => $otherUser->id]);
+    $otherUser->projects()->attach($otherProject->id);
+
+    $response = $this->actingAs($user)->get('/projects');
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('Projects/Index')
+        ->has('projects.data', 1)
+        ->where('projects.data.0.id', $ownProject->id)
+        ->where('isSuperAdmin', false)
+    );
+});

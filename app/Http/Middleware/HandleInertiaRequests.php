@@ -40,12 +40,34 @@ class HandleInertiaRequests extends Middleware
 
         $user = $request->user();
 
-        // Get all accessible projects (from pivot table), ordered with owned projects first
-        $allProjects = $user ? $user->projects()
-            ->select('projects.id', 'projects.name', 'projects.slug', 'projects.owner_id')
-            ->orderByRaw('CASE WHEN projects.owner_id = ? THEN 0 ELSE 1 END', [$user->id])
-            ->latest('projects.created_at')
-            ->get() : [];
+        // Get all accessible projects for the dropdown
+        $allProjects = [];
+        if ($user) {
+            if ($user->isSuperAdmin()) {
+                // Super Admin sees all projects
+                $allProjects = \App\Models\Project::query()
+                    ->select('projects.id', 'projects.name', 'projects.slug', 'projects.owner_id')
+                    ->orderByRaw('CASE WHEN projects.owner_id = ? THEN 0 ELSE 1 END', [$user->id])
+                    ->latest('projects.created_at')
+                    ->get();
+            } else {
+                // Regular users see owned projects + projects they're members of
+                $allProjects = \App\Models\Project::query()
+                    ->where(function ($query) use ($user) {
+                        $query->where('projects.owner_id', $user->id)
+                            ->orWhereExists(function ($subquery) use ($user) {
+                                $subquery->select(\DB::raw(1))
+                                    ->from('project_user')
+                                    ->whereColumn('project_user.project_id', 'projects.id')
+                                    ->where('project_user.user_id', $user->id);
+                            });
+                    })
+                    ->select('projects.id', 'projects.name', 'projects.slug', 'projects.owner_id')
+                    ->orderByRaw('CASE WHEN projects.owner_id = ? THEN 0 ELSE 1 END', [$user->id])
+                    ->latest('projects.created_at')
+                    ->get();
+            }
+        }
 
         return [
             ...parent::share($request),

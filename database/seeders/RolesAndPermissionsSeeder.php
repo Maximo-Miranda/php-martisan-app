@@ -17,30 +17,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Reset cached roles and permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Create global permissions (team_id = null)
-        $globalPermissions = [
-            'access admin panel',
-            'manage users',
-            'manage all projects',
-        ];
-
-        foreach ($globalPermissions as $permission) {
-            Permission::firstOrCreate([
-                'name' => $permission,
-                'guard_name' => 'web',
-            ]);
-        }
-
-        // Create global roles (team_id = null) - Super Admin
-        $superAdmin = Role::firstOrCreate([
-            'name' => 'Super Admin',
-            'guard_name' => 'web',
-            'project_id' => null, // Global role
-        ]);
-        $superAdmin->syncPermissions($globalPermissions);
-
-        // Project-scoped permissions (will be created per-project via teams feature)
-        // These are template permissions that will be applied to project-scoped roles
+        // Project-scoped permissions
         $projectPermissions = [
             'view project',
             'update project',
@@ -61,12 +38,26 @@ class RolesAndPermissionsSeeder extends Seeder
             ]);
         }
 
+        // Create global roles (project_id = null) for platform-wide access
+        // These roles bypass project-scoped restrictions
+        $globalRoles = [
+            'Super Admin' => 'Full platform access, can manage all projects and users',
+            'Platform Moderator' => 'Can moderate content across all projects',
+        ];
+
+        foreach ($globalRoles as $roleName => $description) {
+            Role::firstOrCreate([
+                'name' => $roleName,
+                'guard_name' => 'web',
+                'project_id' => null,
+            ]);
+        }
+
         // Note: Project-scoped roles (Project Owner, Project Admin, etc.)
         // are created dynamically when a project is created.
-        // This seeder just ensures the permissions exist.
 
-        $this->command->info('Roles and permissions seeded successfully!');
-        $this->command->info('Global roles created: Super Admin');
+        $this->command->info('Permissions seeded successfully!');
+        $this->command->info('Global roles created: '.implode(', ', array_keys($globalRoles)));
         $this->command->info('Project roles will be created per-project.');
     }
 }

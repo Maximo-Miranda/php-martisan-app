@@ -22,15 +22,21 @@ class SwitchProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'project_id' => [
                 'required',
                 'integer',
                 Rule::exists('projects', 'id')->whereNull('deleted_at'),
-                Rule::exists('project_user', 'project_id')
-                    ->where('user_id', $this->user()->id),
             ],
         ];
+
+        // Super Admin can switch to any project
+        if (! $this->user()->isSuperAdmin()) {
+            $rules['project_id'][] = Rule::exists('project_user', 'project_id')
+                ->where('user_id', $this->user()->id);
+        }
+
+        return $rules;
     }
 
     /**

@@ -7,10 +7,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: php_martina_app
+      POSTGRES_MULTIPLE_DATABASES: php_martina_app,php_martina_app_test
     ports:
       - "5432:5432"
     volumes:
       - dev_martina_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/create-databases.sh:/docker-entrypoint-initdb.d/create-databases.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d php_martina_app"]
       interval: 10s

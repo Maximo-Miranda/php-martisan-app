@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -38,6 +39,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read int|null $roles_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProjectInvitation> $sentInvitations
  * @property-read int|null $sent_invitations_count
+ *
  * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User newQuery()
@@ -58,6 +60,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutPermission($permissions)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutRole($roles, $guard = null)
+ *
  * @mixin \Eloquent
  */
 class User extends Authenticatable implements MustVerifyEmail
@@ -137,9 +140,51 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(ProjectInvitation::class, 'invited_by');
     }
 
+    /**
+     * Check if user has a global role (project_id = null).
+     *
+     * Global roles are assigned with project_id = NULL in both:
+     * - roles table: the role itself is global (not project-scoped)
+     * - model_has_roles table: the assignment is global (not project-scoped)
+     *
+     * We can't use Spatie's hasRole() because it filters by the current team context.
+     * This method bypasses that to check for truly global roles.
+     *
+     * To assign a global role, use: $user->assignGlobalRole('Super Admin')
+     * NOT: $user->assignRole('Super Admin') - this assigns to current project context
+     */
+    public function hasGlobalRole(string $role): bool
+    {
+        $teamForeignKey = config('permission.column_names.team_foreign_key');
+
+        return DB::table('model_has_roles')
+            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+            ->where('model_has_roles.model_id', $this->id)
+            ->where('model_has_roles.model_type', get_class($this))
+            ->whereNull("model_has_roles.{$teamForeignKey}")
+            ->whereNull("roles.{$teamForeignKey}")
+            ->where('roles.name', $role)
+            ->exists();
+    }
+
+    /**
+     * Assign a global role to the user.
+     */
+    public function assignGlobalRole(string $role): self
+    {
+        $currentTeamId = getPermissionsTeamId();
+        setPermissionsTeamId(null);
+
+        $this->assignRole($role);
+
+        setPermissionsTeamId($currentTeamId);
+
+        return $this;
+    }
+
     public function isSuperAdmin(): bool
     {
-        return $this->hasRole('Super Admin');
+        return $this->hasGlobalRole('Super Admin');
     }
 
     public function belongsToProject(Project $project): bool
